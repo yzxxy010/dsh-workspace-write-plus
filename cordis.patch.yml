@@ -1,0 +1,33 @@
+# dsh-workspace-write-plus
+#
+# 1. 覆盖 permission 整表（patch 不深合并），在官方三档之间插入
+#    workspace-write++，让权限选择器和 /permission 命令把它当正式预设。
+# 2. 插入 host 插件：选中该预设时，按设置页放行项跳过进程沙箱。
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+        name: read-only
+        description: 只读文件系统；写操作需要批准。
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+        name: workspace-write
+        description: 可写工作区与临时目录；更宽的操作需要批准。
+      'workspace-write++':
+        sandbox: workspace-write
+        approval: never
+        name: 工作区修改++
+        description: 可写工作区；放行的 Shell 跳过进程沙箱（Git Bash / MSYS 可用），不弹审批。
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+        name: danger-full-access
+        description: 完整文件访问，不弹审批。
+
+- insert:
+    - id: workspace-write-plus
+      name: dsh-workspace-write-plus

@@ -1,0 +1,13 @@
+{
+  "id": "dsh-external/dsh-workspace-write-plus",
+  "version": "0.2.0",
+  "main": "./src/index.js",
+  "description": "正式权限档 工作区修改++：工作区内写文件，设置页用通配符放行进程沙箱。",
+  "engines": {
+    "dsh": ">=0.1.0"
+  },
+  "contributes": {
+    "tools": [],
+    "skills": []
+  }
+}
