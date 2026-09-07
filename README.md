@@ -1,17 +1,16 @@
-# dsh-workspace-write-plus
+# 工作区修改++
 
-给 DeepSeek Harness 增加第四档权限 **`workspace-write++`**，和 `read-only` / `workspace-write` / `danger-full-access` 出现在同一个权限选择器里。
+Windows 上用 DeepSeek Harness，一跑 `git` 就炸：
 
-## 它是什么
+```
+fatal error - couldn't create signal pipe, Win32 error 5
+```
 
-| 预设 | 文件 | 进程沙箱 | 审批 |
-|---|---|---|---|
-| read-only | 只读 | 包裹 | ask |
-| workspace-write | 工作区可写 | 包裹（Windows 上 Git Bash/MSYS 会内存映射失败） | ask |
-| **workspace-write++** | 工作区可写 | **放行项跳过**（默认 Git Bash + PowerShell） | never |
-| danger-full-access | 无限制 | 不包裹 | never |
+这不是 Git 坏了。官方「工作区写入」会给子进程套一层受限令牌，Git for Windows / MSYS 需要内存映射和命名管道，一套上就起不来。
 
-Windows ACL 受限令牌会让 Git for Windows / MSYS 报内存映射错误，也会让子进程管道 `EPERM`。`workspace-write++` 只跳过**进程**沙箱，文件工具默认仍锁在工作区。
+这个插件在权限选择器里加第四档：**工作区修改++**。文件还是只能改工作区，但放行的程序（默认 Git Bash 和 PowerShell）不再套那层进程沙箱。选上之后，`git --version` 就能正常出来。
+
+它不是「完全访问」。不想把整个磁盘交给模型的时候用这一档。
 
 ## 安装
 
@@ -19,25 +18,46 @@ Windows ACL 受限令牌会让 Git for Windows / MSYS 报内存映射错误，�
 dsh plugin --profile web add https://github.com/yzxxy010/dsh-workspace-write-plus
 ```
 
-本地开发也可以：
+装完重启一次 DSH。输入框旁边的权限选择器里会出现 **工作区修改++**，命令是 `/permission workspace-write++`。
 
-```sh
-dsh plugin --profile web add /d/TEMP/dsh/dsh-workspace-write-plus
-```
+## 怎么用
 
-然后**重启 DSH**。重启后：
+1. 选中 **工作区修改++**
+2. 该 `git`、该跑脚本就直接跑
+3. 想放行别的程序，打开 **设置 → 工作区修改++**
 
-1. 输入框权限选择器会出现 `workspace-write++`
-2. 设置 → **工作区修改++** 用通配符配置放行规则
-3. 设置 → 插件 里也有一张对应卡片
+默认已经放行了 `bash` 和 `pwsh`。Windows 上 Git Bash 往往是从 PowerShell 拉起来的，两个都要放，子进程才不会继续继承受限令牌。
 
-## 放行规则（设置页）
+## 放行规则
 
-默认两条：`bash`、`pwsh`。
+设置页是一份可增删的名单，一行一条。改完立刻生效，存在 DSH 自己的设置里，重启还在。
 
-- 不带斜杠：只比文件名。`bash` 匹配任意目录的 `bash.exe`；要放行别的程序就加一行 `aa`。
-- 带斜杠或通配符：比完整路径。`*` 不跨目录，`**` 跨任意多层。
-- 例如：`**/Git/bin/bash.exe`、`C:/Program Files/Git/**`
-- 工作区外写文件仍是单独开关（默认关）
+| 你写下的 | 实际匹配 |
+|---|---|
+| `bash` | 任意目录里的 `bash.exe` |
+| `pwsh` | 任意目录里的 PowerShell |
+| `aa` | 任意目录里的 `aa.exe` |
+| `**/Git/bin/bash.exe` | 只放行 Git 自带的那一个 bash |
+| `C:/Program Files/Git/**` | Git 安装目录下的所有程序 |
+| `*` | 这一档里所有程序都不套进程沙箱 |
 
-配置走 DSH 设置文档，重启后仍在。
+不带斜杠，只看文件名；带斜杠或 `*` / `**`，按路径匹配。`*` 不跨目录，`**` 可以跨任意多层。
+
+名单留空的话，所有程序仍走进程沙箱——等于这一档退化成「工作区写入、但不弹审批」。
+
+另外还有一个单独开关：**工作区外写文件**。默认关。打开后，write / edit 也可以写到工作区外面。这和放行 Shell 不是一回事，按需再开。
+
+## 和另外三档
+
+权限选择器里还是那四个格子，底层沙箱模式其实只有三种。++ 是一档预设，不是新的沙箱类型。
+
+| | 文件 | 进程沙箱 | 审批 |
+|---|---|---|---|
+| 只读 | 不能写 | 包裹 | 要问 |
+| 工作区写入 | 只能写工作区 | 包裹，Windows 上 Git Bash 会挂 | 要问 |
+| **工作区修改++** | 只能写工作区 | 命中规则的程序跳过 | 不问 |
+| 完全访问 | 不限制 | 不包裹 | 不问 |
+
+## 许可
+
+MIT。
