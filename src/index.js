@@ -10,6 +10,7 @@
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import z from '@deepseek-ai/schemastery'
 
 export const name = 'dsh-workspace-write-plus'
 
@@ -54,6 +55,11 @@ const PLUS_SPEC = {
 }
 
 const DEFAULT_RULES = ['bash', 'pwsh']
+
+export const Config = z.object({
+  rules: z.array(z.string()).default(DEFAULT_RULES.slice()).volatile(),
+  allowFsOutside: z.boolean().default(false).volatile(),
+})
 
 function normalizePath(value) {
   return String(value || '').replace(/\\/g, '/').replace(/\/+/g, '/').trim().toLowerCase()
@@ -133,8 +139,8 @@ function rulesFromValue(value) {
 
 function readAllow(ctx) {
   try {
-    const settings = ctx.get('settings')
-    const value = settings && typeof settings.get === 'function' ? settings.get(SETTINGS_NAMESPACE) : undefined
+    const config = ctx.fiber && typeof ctx.fiber === 'object' ? ctx.fiber.config : undefined
+    const value = config && typeof config === 'object' ? config : undefined
     return {
       rules: rulesFromValue(value),
       allowFsOutside: !!(value && value.allowFsOutside === true),
@@ -276,27 +282,6 @@ export function apply(ctx) {
         else delete fs.editText
       }
     }, `${name}: wrap fs writes`)
-  })
-
-  ctx.inject(['settings'], (sctx) => {
-    Promise.all([
-      importPeer('@deepseek-ai/dsh-settings'),
-      importPeer('@deepseek-ai/schemastery'),
-    ]).then(([ds, sm]) => {
-      const settings = sctx.settings
-      if (!settings || typeof settings.register !== 'function') return
-      const Schema = sm.default || sm
-      const ns = typeof ds.settingsNamespace === 'function'
-        ? ds.settingsNamespace(SETTINGS_NAMESPACE)
-        : SETTINGS_NAMESPACE
-      settings.register(ns, Schema.object({
-        rules: Schema.array(Schema.string()).default(DEFAULT_RULES.slice()),
-        allowFsOutside: Schema.boolean().default(false),
-      }))
-      console.log(`${TAG} settings namespace registered: ${SETTINGS_NAMESPACE}`)
-    }).catch((error) => {
-      console.log(`${TAG} settings registration failed: ${error && error.stack ? error.stack : error}`)
-    })
   })
 
   ctx.inject(['systemPrompt'], (spCtx) => {

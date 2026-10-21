@@ -104,12 +104,12 @@ window.__ModuleLoader__.load({
 
     function bindScope(ctx) {
       try {
-        var settingsScope = ctx.get("settingsScope")
-        if (settingsScope && typeof settingsScope.bind === "function") {
-          return settingsScope.bind({ namespace: SETTINGS_NAMESPACE })
+        var configForms = ctx.configForms
+        if (configForms && typeof configForms.get === "function") {
+          return configForms.get(SETTINGS_NAMESPACE)
         }
       } catch (error) {
-        console.warn(TAG + " settingsScope.bind failed:", error && error.message ? error.message : error)
+        console.warn(TAG + " configForms.get failed:", error && error.message ? error.message : error)
       }
       return null
     }
@@ -272,7 +272,7 @@ window.__ModuleLoader__.load({
     }
 
     exports.name = "dsh-workspace-write-plus/client"
-    exports.inject = ["slots", "locale"]
+    exports.inject = ["slots", "locale", "configForms"]
 
     exports.apply = function (ctx) {
       var scope = bindScope(ctx)
